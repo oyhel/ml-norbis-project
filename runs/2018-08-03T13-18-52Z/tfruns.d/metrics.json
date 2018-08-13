@@ -1,0 +1,6 @@
+{
+  "loss": [0.0175, 1.1921e-07, 1.1921e-07, 1.1921e-07, 1.1921e-07, 1.1921e-07, 1.1921e-07, 1.1921e-07, null, null, null, null, null, null, null, null, null, null, null, null],
+  "acc": [0.0985, 0.0985, 0.0985, 0.0985, 0.0985, 0.0985, 0.0985, 0.0985, null, null, null, null, null, null, null, null, null, null, null, null],
+  "val_loss": [1.1921e-07, 1.1921e-07, 1.1921e-07, 1.1921e-07, 1.1921e-07, 1.1921e-07, 1.1921e-07, 1.1921e-07, null, null, null, null, null, null, null, null, null, null, null, null],
+  "val_acc": [0.0995, 0.0995, 0.0995, 0.0995, 0.0995, 0.0995, 0.0995, 0.0995, null, null, null, null, null, null, null, null, null, null, null, null]
+}

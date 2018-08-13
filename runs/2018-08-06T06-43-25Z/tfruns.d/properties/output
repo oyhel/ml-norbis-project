@@ -1,0 +1,16 @@
+
+> #' Trains a simple deep NN on the MNIST dataset.
+> #'
+> #' Gets to 98.40% test accuracy after 20 epochs (there is *a lot* of margin for
+> #' paramet .... [TRUNCATED] 
+
+> # Hyperparameter flags ---------------------------------------------------
+> 
+> FLAGS <- flags(
++    flag_numeric("l1units", 40),
++    flag_numeric( .... [TRUNCATED] 
+
+> # Data Preparation ---------------------------------------------------
+> 
+> # Load data
+> data <- read.table('epil-seizure.csv', header = T, strings .... [TRUNCATED] 

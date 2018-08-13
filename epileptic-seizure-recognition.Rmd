@@ -1,0 +1,263 @@
+---
+title: "Epileptic Seizure Recognition"
+author: "Øyvind Helgeland"
+date: "August 2, 2018"
+output: html_document
+---
+
+```{r}
+# Data: http://archive.ics.uci.edu/ml/datasets/Epileptic+Seizure+Recognition
+
+# Tutorials
+# https://github.com/apurvnnd/Epileptic-Seizure-Recognition-Using-ANN/blob/master/ESR.py
+# https://www.datacamp.com/community/tutorials/keras-r-deep-learning
+
+```
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(keras)
+library(tfruns)
+```
+
+
+```{r}
+# Load data
+data <- read.table('epil-seizure.csv', header = T, stringsAsFactors = F, sep=',')
+
+# Split data into to explanatory (exp) and response (res)
+exp <- data.matrix(data[,2:179])
+res <- data[,180]
+```
+
+```{r}
+# To get some overview of the data separation, PCA is performed.
+pc <- prcomp(data[,2:179])
+
+t <- as.data.frame(pc$x)
+t2 <- cbind(t,res)
+
+ggplot(t) + 
+  geom_point(aes(PC1,PC2, col=as.factor(res)), alpha = 0.5) + 
+  scale_color_manual(values = palette()[3:7]) + 
+  ggtitle("PC1 vs PC2, all groups")
+
+ggplot(subset(t2, res!=1)) + 
+  geom_point(aes(PC1,PC2, col=as.factor(res)), alpha = 0.5) + 
+  scale_color_manual(values = palette()[4:7]) +
+  ggtitle("PC1 vs PC2, group 2-5")
+```
+
+The dataset is split into a training and testing set. The training set contains 10.000 observations and test 1500.
+```{r}
+# Split dataset into test and training
+epi_x_train <- exp[1:10000,]
+epi_y_train.cat <- res[1:10000]
+epi_y_train <- to_categorical(epi_y_train.cat)[,2:6]
+
+epi_x_test <- exp[10001:nrow(exp),]
+epi_y_test.cat <- res[10001:nrow(exp)]
+epi_y_test <- to_categorical(epi_y_test.cat)[,2:6]
+```
+
+Selection of model. I have chosen to use a fully connected multi-layer perceptron which is widely used when dealing with classification tasks with multiple output classes. Previous experience also suggest using relu (REctified Linear Unit) activation in the hidden layers. The relu activator is quicker when tuning due to less active neurons by its design. Even though various activators could be part of hyperparameter optimization, I have chosen to keep the activator static due to time constraints (I did some behind the scenes tweaking to see if other activators worked better without much luck). Hyperparameter optimization testing performance when including an additional layer, various combination of the number of units per layer and dropout in the second layer will be performed trying to increase the performance of the neural net. The dropout layer is added to avoid over-fitting. Dropping out a random set of neurons will break any co-dependency between neurons. Validation split is set at 0.2, meaning that 20% of the data in the training set is used for validation and the remaining 80% is used for actually training the model.
+
+As the output layer concists of five neurons it makes sense to use the softmax activator in the final layer. Softmax will output values in the range from 0 to 1 and can be used as a probability distribution for the five different classes.
+
+Let's look at the model with two layers and arbitray 
+```{r}
+# generate model
+model = keras_model_sequential() 
+model %>%
+  layer_dense(units = 150, activation = 'relu', input_shape = c(ncol(exp))) %>% 
+  layer_dropout(rate = 0.2) %>% 
+  layer_dense(units = 150, activation = 'relu') %>%
+  #layer_dense(units = 150, activation = 'relu') %>%
+  layer_dense(units = 5, activation = 'softmax')
+
+# View a smmary of the model
+summary(model)
+
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = 'adam',
+  metrics = c('accuracy')
+)
+
+# fit the model
+history <- model %>% fit(
+  epi_x_train, epi_y_train, 
+  epochs = 50, 
+  validation_split = 0.2,
+  verbose = 1
+)
+
+# BEST
+# model %>%
+#   layer_dense(units = 100, activation = 'relu', input_shape = c(ncol(exp))) %>% 
+#   layer_dropout(rate = 0.2) %>% 
+#   layer_dense(units = 50, activation = 'elu') %>%
+#   layer_dense(units = 150, activation = 'relu') %>%
+#   layer_dense(units = 5, activation = 'softmax')
+
+```
+
+After the first attempt of creating a model with 50 epochs we can see that the loss declines up until approximately the 20th epoch before it starts to increase again. The accuracy follows the same pattern reaching the highest accuracy in the validation at the same epoch. At the end of the run we see that accuracy and loss starts pointing upwards and downwards repsectively. Hence, it's interesting to run this model for more epochs to see if the model can improve.
+```{r}
+plot(history)
+```
+
+Running the same model for 500 epochs we do not really gain much. The model hovers around an accuracy in the validation set of about 0.3.
+
+```{r, cache=T}
+# generate model
+model = keras_model_sequential() 
+model %>%
+  layer_dense(units = 150, activation = 'relu', input_shape = c(ncol(exp))) %>% 
+  layer_dropout(rate = 0.2) %>% 
+  layer_dense(units = 150, activation = 'relu') %>%
+  #layer_dense(units = 150, activation = 'relu') %>%
+  layer_dense(units = 5, activation = 'softmax')
+
+# View a smmary of the model
+summary(model)
+
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = 'adam',
+  metrics = c('accuracy')
+)
+
+# fit the model
+history2 <- model %>% fit(
+  epi_x_train, epi_y_train, 
+  epochs = 500, 
+  validation_split = 0.2,
+  verbose = 1
+)
+
+# BEST
+# model %>%
+#   layer_dense(units = 100, activation = 'relu', input_shape = c(ncol(exp))) %>% 
+#   layer_dropout(rate = 0.2) %>% 
+#   layer_dense(units = 50, activation = 'elu') %>%
+#   layer_dense(units = 150, activation = 'relu') %>%
+#   layer_dense(units = 5, activation = 'softmax')
+
+```
+
+```{r, cache=T}
+plot(history2, smooth = F)
+```
+
+Using hyperparameter optimization all models with combinations of 50, 100 or 150 units in the two layers and a dropout rate of 0, 0.2 and 0.4 model is tested for all combinations. The results show that a model using 50 units in both layers and a dropout of 0 receives the best validation accuracy with 20 epochs.
+
+```{r,cache=T}
+# Testing archictecture with two layers
+runs_2l <- tuning_run("epi_mlp_2layer.R", flags = list(
+  l1units = c(50, 100, 150),
+  l2units = c(50, 100, 150),
+  dropout1 = c(0,0.2,0.4)
+))
+
+rundf_2l <- runs_2l[,c('eval_loss','eval_acc', 'metric_loss', 'metric_val_loss', 'metric_val_acc', 'flag_l1units', 'flag_l2units', 'flag_dropout1', 'epochs')]
+knitr::kable(head(arrange(rundf_2l, desc(metric_val_acc))))
+```
+
+In order to investiagte what an additinal hidden layer would do to the performance of the network a layer was added and the hyperparameter optimization was performed again. The results show that adding the additional layer improved the validation accuracy with 100,150 and 150 units in the three layers, respectively, and a dropout of 0.2. Accuracy improved from 0.60 to 0.66.
+
+```{r, cache=T}
+# Testing architecture with 3 layers
+runs_3l <- tuning_run("epi_mlp_3layer.R", flags = list(
+  l1units = c(50, 100, 150),
+  l2units = c(50, 100, 150),
+  l3units = c(50, 100, 150),
+  dropout1 = c(0,0.2,0.4)
+))
+
+rundf_3l <- runs_3l[,c('eval_loss','eval_acc', 'metric_loss', 'metric_val_loss', 'metric_val_acc', 'flag_l1units', 'flag_l2units', 'flag_l3units', 'flag_dropout1','epochs')]
+knitr::kable(head(arrange(rundf_3l, desc(metric_val_acc))))
+```
+
+Since an significant improvement was seen after adding an additional layer, it made sense to investiagte the potential performance increase when increasing the number of units in the layers in the higher range. An hyperparameter optimization similar to the previous but testing with higher combinations of higher number of units were performed. Results show the best performing model has a decreased validation accuracy (0.64) with the lowest number of units possible. This suggests that increasing the number of units is not beneficial for our model.
+
+```{r, cache=T}
+# Testing architecture with 3 layers and high number of nodes
+runs_3l_high <- tuning_run("epi_mlp_3layer.R", flags = list(
+  l1units = c(150, 200, 400),
+  l2units = c(150, 200, 400),
+  l3units = c(150, 200, 400),
+  dropout1 = c(0,0.2,0.4)
+))
+
+rundf_3l_high <- runs_3l_high[,c('eval_loss','eval_acc', 'metric_loss', 'metric_val_loss', 'metric_val_acc', 'flag_l1units', 'flag_l2units', 'flag_l3units', 'flag_dropout1', 'epochs')]
+knitr::kable(head(arrange(rundf_3l_high, desc(metric_val_acc))))
+```
+
+With some more knowledge of the best performing parameters, the suggested number of units and dropout rate is used to train a model for 500 epochs. From the plot we can see that the loss and validation accuracy improves drastically up until approx the 20th epoch before it continues to improve marginally. Of importance here is that the validation loss does not increase during the 500 epochs, and the validation accuracy steadily increases/improves. This suggest that the model is not overfitting and even though the accuracy of the training set and validation set depart early on, the model gradually improves to the best validation accuracy at 0.729.
+ 
+```{r, cache=T}
+# generate model
+model = keras_model_sequential() 
+model %>%
+  layer_dense(units = 150, activation = 'relu', input_shape = c(ncol(exp))) %>% 
+  layer_dropout(rate = 0.2) %>% 
+  layer_dense(units = 50, activation = 'relu') %>%
+  layer_dense(units = 50, activation = 'relu') %>%
+  layer_dense(units = 5, activation = 'softmax')
+
+# View a smmary of the model
+summary(model)
+
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = 'adam',
+  metrics = c('accuracy')
+)
+
+# fit the model
+history_best <- model %>% fit(
+  epi_x_train, epi_y_train, 
+  epochs = 500, 
+  validation_split = 0.2,
+  verbose = 1
+)
+```
+
+```{r}
+plot(history_best, smooth = F)
+```
+
+After training the model we need to assess how the model performs on the test data (the subset of the data that the model has not seen before). We find that the accuracy in predicting the classes in this dataset is 0.733.
+
+```{r}
+score <- model %>% evaluate(epi_x_test, epi_y_test)
+print(score)
+```
+
+This might be better visualized in a confusion matrix and accompanying plot where we can see that the model does a decent job of classifying the test dataset (depending on who you ask). The plot and matrix also gives an impression of where the model fails. The model does a good job of classifying category 1 (seizure) with fewer misclassifications compared to the lower categories where the model struggles to distinguish the different categories. This is in line with what we saw in the initial principal component analysis.
+
+```{r}
+classes <- model %>% predict_classes(epi_x_test)
+
+# generate confusion matrix
+cm <- table(epi_y_test.cat, classes+1)
+print(cm)
+
+cm.df <- as.data.frame(cm)
+names(cm.df) <- c('actual','predict','freq')
+
+plot <- ggplot(cm.df)
+plot + geom_tile(aes(x=actual, y=predict, fill=freq)) +
+  scale_x_discrete(name="Actual Class") +
+  scale_y_discrete(name="Predicted Class") 
+  
+print(plot)
+```
+
+## Conclusion
+
+First of all, there are a lot of room for improvement in this model. Due to spending half a week getting the GPU acceleration to work properly in Linux and R, some shortcuts were necessary. The GPU acceleration was necessary to make hyperparameter optimization possible at all (the speedup increase was approx 15-20x on my system). To improve the model, various optimizers and activators could be tested in hyperparameter optimization in additional to more finegrained testing of units in layers and possible a completely different architecture. To my understanding there is no benefit of trying out other loss functions than categorical crossentropy when training a multi-class classification (but I might be wrong about this...). Also, the number of epochs used in the hyperparameter optimization is relatively low. Increasing the number of epochs could potentially reveal better models if they needed to train for longer.

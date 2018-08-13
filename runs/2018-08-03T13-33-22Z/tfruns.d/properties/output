@@ -1,0 +1,11 @@
+
+> #' Trains a simple deep NN on the MNIST dataset.
+> #'
+> #' Gets to 98.40% test accuracy after 20 epochs (there is *a lot* of margin for
+> #' paramet .... [TRUNCATED] 
+
+> # Hyperparameter flags ---------------------------------------------------
+> 
+> FLAGS <- flags(
++   flag_numeric("dropout1", 0.4),
++   flag_numeric( .... [TRUNCATED] 

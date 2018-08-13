@@ -1,0 +1,186 @@
+---
+title: "Epileptic Seizure Recognition"
+author: "Øyvind Helgeland"
+date: "August 2, 2018"
+output: html_document
+---
+
+```{r}
+# Data: http://archive.ics.uci.edu/ml/datasets/Epileptic+Seizure+Recognition
+
+# Tutorials
+# https://github.com/apurvnnd/Epileptic-Seizure-Recognition-Using-ANN/blob/master/ESR.py
+# https://www.datacamp.com/community/tutorials/keras-r-deep-learning
+
+```
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(keras)
+library(tfruns)
+```
+
+
+```{r}
+# Load data
+data <- read.table('epil-seizure.csv', header = T, stringsAsFactors = F, sep=',')
+
+# Split data into to explanatory (exp) and response (res)
+exp <- data.matrix(data[,2:179])
+res <- data[,180]
+```
+
+```{r}
+# To get some overview of the data separation, PCA is performed.
+pc <- prcomp(data[,2:179])
+
+t <- as.data.frame(pc$x)
+t2 <- cbind(t,res)
+
+ggplot(t) + 
+  geom_point(aes(PC1,PC2, col=as.factor(res)), alpha = 0.5) + 
+  scale_color_manual(values = palette()[3:7]) + 
+  ggtitle("PC1 vs PC2, all groups")
+
+ggplot(subset(t2, res!=1)) + 
+  geom_point(aes(PC1,PC2, col=as.factor(res)), alpha = 0.5) + 
+  scale_color_manual(values = palette()[4:7]) +
+  ggtitle("PC1 vs PC2, group 2-5")
+
+
+```
+
+```{r}
+# Split dataset into test and training
+epi_x_train <- exp[1:10000,]
+epi_y_train.cat <- res[1:10000]
+epi_y_train <- to_categorical(epi_y_train.cat)[,2:6]
+
+
+epi_x_test <- exp[10001:nrow(exp),]
+epi_y_test.cat <- res[10001:nrow(exp)]
+epi_y_test <- to_categorical(epi_y_test.cat)[,2:6]
+
+```
+
+```{r,cache=T}
+# Testing archictecture with two layers
+runs_2l <- tuning_run("epi_mlp_2layer.R", flags = list(
+  l1units = c(50, 100, 150),
+  l2units = c(50, 100, 150),
+  dropout1 = c(0,0.2,0.4)
+))
+
+rundf_2l <- runs_2l[,c('eval_loss','eval_acc', 'metric_loss', 'metric_val_loss', 'metric_val_acc', 'flag_l1units', 'flag_l2units', 'dropout1')]
+knitr::kable(head(arrange(rundf, desc(eval_acc))))
+
+```
+
+```{r, cache=T}
+# Testing architecture with 3 layers
+runs_3l <- tuning_run("epi_mlp_3layer.R", flags = list(
+  l1units = c(50, 100, 150),
+  l2units = c(50, 100, 150),
+  l3units = c(50, 100, 150),
+  dropout1 = c(0,0.2,0.4)
+))
+
+rundf_3l <- runs3l[,c('eval_loss','eval_acc', 'metric_loss', 'metric_val_loss', 'metric_val_acc', 'flag_l1units', 'flag_l2units', 'flag_l3units', 'flag_dropout1')]
+knitr::kable(head(arrange(rundf_3l, desc(eval_acc))))
+```
+
+```{r, cache=T}
+# Testing architecture with 3 layers and high number of nodes
+runs_3l_high <- tuning_run("epi_mlp_3layer.R", flags = list(
+  l1units = c(150, 200, 400),
+  l2units = c(150, 200, 400),
+  l3units = c(150, 200, 400),
+  dropout1 = c(0,0.2,0.4)
+))
+
+rundf_3l_high <- runs_3l_high[,c('eval_loss','eval_acc', 'metric_loss', 'metric_val_loss', 'metric_val_acc', 'flag_l1units', 'flag_l2units', 'flag_l3units', 'flag_dropout1')]
+knitr::kable(head(arrange(rundf, desc(eval_acc))))
+```
+ 
+Selection of model. I start of declaring a sequential model and build a fully connected multi-layer perceptron. Previous experience with building similar classifiers like suggests using relu (REctified Linear Unit) activation in the hidden layers. To avoid too much complexity in tuning the parameters I've kept this static (I did some behind the scenes tweaking to see if other activators worked better without much luck). Also, the relu activator is quicker when tuning due to less active neurons by its design. Validation split is set at 0.2 to 
+
+As the output layer concists of five neurons it makes sense to use softmax acticator in the final layer. Softax will output values in the range from 0 to 1 and can be predicted as probability distribution for the five different classes.
+
+```{r}
+# generate model
+model = keras_model_sequential() 
+model %>%
+  layer_dense(units = 100, activation = 'relu', input_shape = c(ncol(exp))) %>% 
+  layer_dropout(rate = 0.2) %>% 
+  layer_dense(units = 50, activation = 'elu') %>%
+  layer_dense(units = 150, activation = 'relu') %>%
+  layer_dense(units = 5, activation = 'softmax')
+
+# View a smmary of the model
+summary(model)
+
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = 'adam',
+  metrics = c('accuracy')
+)
+
+# fit the model
+history <- model %>% fit(
+  epi_x_train, epi_y_train, 
+  epochs = 1000, 
+  validation_split = 0.2,
+  verbose = 1
+)
+
+# BEST
+# model %>%
+#   layer_dense(units = 100, activation = 'relu', input_shape = c(ncol(exp))) %>% 
+#   layer_dropout(rate = 0.2) %>% 
+#   layer_dense(units = 50, activation = 'elu') %>%
+#   layer_dense(units = 150, activation = 'relu') %>%
+#   layer_dense(units = 5, activation = 'softmax')
+
+```
+
+```{r}
+classes <- model %>% predict_classes(epi_x_test)
+
+# generate confusion matrix
+cm <- table(epi_y_test.cat, classes+1)
+print(cm)
+
+cm.df <- as.data.frame(cm)
+names(cm.df) <- c('actual','predict','freq')
+
+plot <- ggplot(cm.df)
+plot + geom_tile(aes(x=actual, y=predict, fill=freq)) +
+  scale_x_discrete(name="Actual Class") +
+  scale_y_discrete(name="Predicted Class") 
+  #scale_fill_gradient(breaks=seq(from=-.5, to=4, by=.2))
+#print(plot)
+
+#+  +  +  + labs(fill="Normalized\nFrequency")
+
+```
+
+```{r}
+score <- model %>% evaluate(epi_x_test, epi_y_test)
+print(score)
+```
+
+```{r}
+library(tfruns)
+training_run("mnist_mlp.R")
+
+runs <- tuning_run("epi_mlp.R", flags = list(
+  l1units = c(50, 100, 150),
+  l2units = c(50, 100, 150),
+  l3units = c(50, 100, 150),
+  dropout1 = c(0,0.2,0.4)
+))
+```
+

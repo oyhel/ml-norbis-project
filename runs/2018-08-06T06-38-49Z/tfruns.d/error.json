@@ -1,0 +1,4 @@
+{
+  "message": "epi_mlp.R:16:2: unexpected ')'\n15:    flag_numeric(\"dropout1\"), 0.2)\n16:  )\n     ^",
+  "traceback": "tuning_run(\"epi_mlp.R\", flags = list(l1units = c(50, 100, 150), \n    l2units = c(50, 100, 150), l3units = c(50, 100, 150), dropout1 = c(0.1, \n        0.2, 0.4)))"
+}

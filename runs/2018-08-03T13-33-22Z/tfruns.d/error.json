@@ -1,0 +1,4 @@
+{
+  "message": "The following flags were provided but not declared: l1units, l2units",
+  "traceback": ["stop(\"The following flags were provided but not declared: \", \n    paste(undeclared, collapse = \", \"), call. = FALSE)", "parse_flags(FLAGS, config, file, arguments)", "flags(flag_numeric(\"dropout1\", 0.4), flag_numeric(\"dropout2\", \n    0.3))", "eval(ei, envir)", "eval(ei, envir)", "withVisible(eval(ei, envir))", "tuning_run(\"epi_mlp.R\", flags = list(l1units = c(50, 100, 150), \n    l2units = c(50, 100, 150)))"]
+}

@@ -1,0 +1,66 @@
+
+> #' Trains a simple deep NN on the MNIST dataset.
+> #'
+> #' Gets to 98.40% test accuracy after 20 epochs (there is *a lot* of margin for
+> #' paramet .... [TRUNCATED] 
+
+> # Hyperparameter flags ---------------------------------------------------
+> 
+> FLAGS <- flags(
++    flag_numeric("l1units", 40),
++    flag_numeric( .... [TRUNCATED] 
+
+> # Data Preparation ---------------------------------------------------
+> 
+> # Load data
+> data <- read.table('epil-seizure.csv', header = T, strings .... [TRUNCATED] 
+
+> # Split data into to explanatory (exp) and response (res)
+> exp <- data.matrix(data[,2:179])
+
+> res <- data[,180]
+
+> # Split dataset into test and training
+> epi_x_train <- exp[1:10000,]
+
+> epi_y_train.cat <- res[1:10000]
+
+> epi_y_train <- to_categorical(epi_y_train.cat)[,2:6]
+
+> epi_x_test <- exp[10001:nrow(exp),]
+
+> epi_y_test.cat <- res[10001:nrow(exp)]
+
+> epi_y_test <- to_categorical(epi_y_test.cat)[,2:6]
+
+> # Define Model --------------------------------------------------------------
+> 
+> # generate model
+> model = keras_model_sequential() 
+
+> model %>%
++   layer_dense(units = FLAGS$l1units, activation = 'relu', input_shape = c(ncol(exp))) %>% 
++   layer_dropout(rate = FLAGS$dropout1) %>%  .... [TRUNCATED] 
+
+> # compile the model
+> model %>% compile(
++   loss = 'categorical_crossentropy',
++   optimizer = 'adam',
++   #optimizer = sgd,
++   metrics = c('accur .... [TRUNCATED] 
+
+> # Training & Evaluation ----------------------------------------------------
+> 
+> history <- model %>% fit(
++   epi_x_train, epi_y_train, 
++   epoch .... [TRUNCATED] 
+
+> plot(history)
+
+> score <- model %>% evaluate(epi_x_test, epi_y_test, verbose = 0)
+
+> cat('Test loss:', score$loss, '\n')
+Test loss: 0.8518093 
+
+> cat('Test accuracy:', score$acc, '\n')
+Test accuracy: 0.6226667 
