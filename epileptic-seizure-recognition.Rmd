@@ -64,7 +64,7 @@ epi_y_test.cat <- res[10001:nrow(exp)]
 epi_y_test <- to_categorical(epi_y_test.cat)[,2:6]
 ```
 
-# Model selection
+### Model selection
 I decided to start of using a fully connected multi-layer perceptron which seems most widely used when dealing with classification tasks with multiple output categories. Previous experience suggests using relu (REctified Linear Unit) activation function in the hidden layers. The relu activator is quicker when tuning due to less active neurons by its design (because negative values are set to 0). Even though various activators could be part of hyperparameter optimization (see later), I have chosen to keep the activator static due to time constraints and because relu seems to be the most widely used (I did some behind the scenes tweaking to see if other activators worked better without much luck). The loss function used is cateogorical crossentropy which is the natural choice when dealing with multi-class classification. The optimizer used for this excercise is adam (Adaptive Moment Estimation). This was chosen because it is generally fast to converge and is more robust to vanishing learning rate. The dropout layer is added to avoid over-fitting. Dropping out a random set of neurons will break any co-dependency between neurons. Validation split is set at 0.2, meaning that 20% of the data in the training set is used for validation and the remaining 80% is used for actually training the model. The metric we want to evaluate the model on is accuracy, i.e. how accurate the model classifies observations in the test data.
 
 As the output layer concists of five neurons (five output categories) it makes sense to use the softmax activator in the final layer. Softmax will output values in the range from 0 to 1 and can be used as a probability distribution for the five different classes we are trying to predict.
@@ -243,7 +243,7 @@ knitr::kable(head(arrange(rundf_3l_high, desc(metric_val_acc))))
 
 We will continue with the model above, displaying the best performance whe using 150, 50 and 50 neurons in the three hidden layers respectively and dropout of 0.2. 
 
-### Training the proposed best model
+## Training the proposed best model
 With some more insight into the best performing parameters, the suggested number of units and dropout rate is used to train a model for 500 epochs. From the plot we can see that the loss and validation accuracy improves drastically up until approx the 20th epoch before it continues to improve marginally. Of importance here is that the validation loss does not increase during the 1000 epochs, and the validation accuracy steadily increases/improves. This suggest that the model is not overfitting and even though the accuracy of the training set and validation set depart early on, the model gradually improves to the best validation accuracy at 0.729.
  
 ```{r, cache=T, eval=F}
@@ -282,7 +282,7 @@ load(file = 'history3.Rdata')
 plot_history(data.frame(history3$metrics))
 ```
 
-# Assess model performance on test data
+## Assess model performance on test data
 After training the model we need to assess how the model performs on the test data (the subset of the data that the model has not seen before). We find that the accuracy in predicting the classes in this dataset is 0.714.
 
 ```{r, cache=T, eval=F}
@@ -323,4 +323,4 @@ plot + geom_tile(aes(x=actual, y=predict, fill=freq)) +
 ```
 
 ## Conclusion
-First of all, there is ample room for improving this model. Due to spending half a week getting the GPU acceleration to work properly in Linux and R, some shortcuts were necessary. The GPU acceleration was necessary to make hyperparameter optimization achievable (the speedup increase was approx ~20x on my system). To improve the model, various optimizers and activators could be tested in hyperparameter optimization in additional to more finegrained testing of units in layers and possible a completely different architecture. To my understanding there is no benefit of trying out other loss functions than categorical crossentropy when training a multi-class classification (but I might be wrong about this...). Also, the number of epochs used in the hyperparameter optimization is relatively low. Increasing the number of epochs could potentially reveal better models if they needed to train for longer. Additional parameters naturally increase the search scope when doing hyperparameter optimization. However, more intelligent optimization algorithms can do more selevtive  can be done more cleverly 
+First of all, there is ample room for improving this model. Due to spending half a week getting the GPU acceleration to work properly in Linux and R, some shortcuts were necessary. The GPU acceleration was necessary to make hyperparameter optimization achievable (the speedup increase was approx ~20x on my system). To improve the model, various optimizers and activators could be tested in hyperparameter optimization in additional to more finegrained testing of units in layers and possible a completely different architecture. To my understanding there is no benefit of trying out other loss functions than categorical crossentropy when training a multi-class classification (but I might be wrong about this...). Also, the number of epochs used in the hyperparameter optimization is relatively low. Increasing the number of epochs could potentially reveal better models if they needed to train for longer. Additional parameters naturally increase the search scope when doing hyperparameter optimization. However, more intelligent optimization algorithms can inspect the search space more selectively and prevent testing combinations that is likely to yield poor performance.
