@@ -2,7 +2,9 @@
 title: "Epileptic Seizure Classification - NORBIS 2018"
 author: "Øyvind Helgeland"
 date: "August 2, 2018"
-output: html_document
+output:
+  md_document:
+    variant: markdown_github
 ---
 
 ```{r, message=F}
